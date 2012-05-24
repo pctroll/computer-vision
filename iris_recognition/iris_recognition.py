@@ -3,9 +3,9 @@
 
 import cv
 import math
+import numpy
 
-
-centroid = [-100,-100]
+centroid = (0,0)
 pupilArea = 0
 pupil = []
 
@@ -30,7 +30,9 @@ def getPupil(frame):
 			x = cv.GetSpatialMoment(moments,1,0)/area
 			y = cv.GetSpatialMoment(moments,0,1)/area
 			pupil = contours
-			point = [int(x),int(y)]
+			point = (int(x),int(y))
+			global centroid
+			centroid = point
 			cv.DrawContours(frame, pupil, (0,0,0), (0,0,0), 2, cv.CV_FILLED)
 			#cv.Circle(frame, (int(x),int(y)), 2, (0,255,0), int(r)*2)
 			break
@@ -40,17 +42,19 @@ def getPupil(frame):
 
 def getIris(frame):
 	grayImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	storage = cv.CreateMat(frame.width, 1, cv.CV_32FC3)
 	cv.CvtColor(frame,grayImg,cv.CV_BGR2GRAY)
-	cv.Smooth(grayImg,grayImg,cv.CV_GAUSSIAN,9,9)
-	cv.Canny(grayImg, grayImg, 32, 2)
-	storage = cv.CreateMat(grayImg.width, 1, cv.CV_32FC3)
+	cv.Canny(grayImg, grayImg, 5, 70, 3)
+	cv.Smooth(grayImg,grayImg,cv.CV_GAUSSIAN, 7, 7)
 	minRad = int(getRadius(pupilArea))
-	circles = cv.HoughCircles(grayImg, storage, cv.CV_HOUGH_GRADIENT, 2, 10,32,200,minRad, minRad*2)
-	cv.ShowImage("output", grayImg)
-	while circles:
-		cv.DrawContours(frame, circles, (0,0,0), (0,0,0), 2)
-		print "circle!"
-		circles = circles.h_next()
+	cv.HoughCircles(grayImg, storage, cv.CV_HOUGH_GRADIENT, 2, 100.0, 30, 150, 100, 140)
+	#cv.ShowImage("output", grayImg)
+	circles = numpy.asarray(storage)
+	for circle in circles:
+		rad = int(circle[0][2])
+		cv.Circle(frame, centroid, rad, cv.CV_RGB(255,0,0), 1, 8, 0)
+		#cv.DrawContours(frame, circles, (0,0,0), (0,0,0), 2)
+		#print "circle!"
 	return (frame)
 
 
@@ -62,7 +66,7 @@ while True:
 	output = getPupil(frame)
 	cv.ShowImage("input", frame)
 	iris = getIris(output)
-	#cv.ShowImage("output", iris)
+	cv.ShowImage("output", iris)
 	key = cv.WaitKey(500)
 	# seems like Esc with NumLck equals 1048603
 	if (key == 27 or key == 1048603):
