@@ -9,6 +9,17 @@ centroid = (0,0)
 radius = 0
 magnitude = 0
 
+def getCircles(image):
+	i = 20
+	while i < 151:
+		storage = cv.CreateMat(image.width, 1, cv.CV_32FC3)
+		cv.HoughCircles(image, storage, cv.CV_HOUGH_GRADIENT, 2, 100.0, 30, i, 100, 140)
+		circles = np.asarray(storage)
+		if (len(circles) == 1):
+			return circles
+		i +=1
+	return ([])
+
 def getPupil(frame):
 	pupilImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
 	cv.InRangeS(frame, (30,30,30), (80,80,80), pupilImg)
@@ -39,8 +50,8 @@ def getIris(frame):
 	cv.CvtColor(frame,grayImg,cv.CV_BGR2GRAY)
 	cv.Canny(grayImg, grayImg, 5, 70, 3)
 	cv.Smooth(grayImg,grayImg,cv.CV_GAUSSIAN, 7, 7)
-	cv.HoughCircles(grayImg, storage, cv.CV_HOUGH_GRADIENT, 2, 100.0, 30, 150, 100, 140)
-	circles = np.asarray(storage)
+	#circles = cv.HoughCircles(grayImg,storage,cv.CV_HOUGH_GRADIENT,2,100.0,30,150,100,40)
+	circles = getCircles(grayImg)	
 	for circle in circles:
 		rad = int(circle[0][2])
 		global radius
@@ -54,11 +65,10 @@ def getIris(frame):
 
 cv.NamedWindow("input", cv.CV_WINDOW_AUTOSIZE)
 cv.NamedWindow("output", cv.CV_WINDOW_AUTOSIZE)
-cv.NamedWindow("normalized", cv.CV_WINDOW_AUTOSIZE)
 
 key = 0
 while True:
-	frame = cv.LoadImage("images/R/S1001R02.jpg")
+	frame = cv.LoadImage("images/R/S1001R01.jpg")
 	iris = cv.CloneImage(frame)
 	output = getPupil(frame)
 	iris = getIris(output)
@@ -66,11 +76,6 @@ while True:
 	y = float(centroid[1])
 	cv.ShowImage("input", frame)
 	cv.ShowImage("output", iris)
-	size = cv.GetSize(frame)
-	size = (int(size[0]), int(size[1]*3.14))
-	normImg = cv.CreateImage(size, 8, 3)
-	cv.LogPolar(iris, normImg, (x,y), 40)
-	cv.ShowImage("normalized", normImg)
 	key = cv.WaitKey(1000)
 	# seems like Esc with NumLck equals 1048603
 	if (key == 27 or key == 1048603):
