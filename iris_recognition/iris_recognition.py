@@ -71,10 +71,15 @@ def getIris(frame):
 		cv.Sub(frame,copyImg,resImg,mask)
 	return (resImg)
 	
-
+def getPolar2CartImg(image, center, rad):
+	c = (float(center[0]), float(center[1]))
+	imgRes = cv.CreateImage((rad*2, int(360)), 8, 3)
+	cv.LogPolar(image,imgRes,c,25.0)
+	return (imgRes)
 
 cv.NamedWindow("input", cv.CV_WINDOW_AUTOSIZE)
 cv.NamedWindow("output", cv.CV_WINDOW_AUTOSIZE)
+cv.NamedWindow("normalized", cv.CV_WINDOW_AUTOSIZE)
 
 eyesList = os.listdir('images/R')
 key = 0
@@ -84,10 +89,11 @@ while True:
 	iris = cv.CloneImage(frame)
 	output = getPupil(frame)
 	iris = getIris(output)
-	x = float(centroid[0])
-	y = float(centroid[1])
 	cv.ShowImage("input", frame)
 	cv.ShowImage("output", iris)
+	normImg = cv.CloneImage(iris)
+	normImg = getPolar2CartImg(iris,centroid,radius)
+	cv.ShowImage("normalized", normImg)
 	key = cv.WaitKey(3000)
 	# seems like Esc with NumLck equals 1048603
 	if (key == 27 or key == 1048603):
