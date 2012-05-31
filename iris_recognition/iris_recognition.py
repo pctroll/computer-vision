@@ -53,6 +53,7 @@ def getPupil(frame):
 	return (pupilImg)
 
 def getIris(frame):
+	iris = []
 	copyImg = cv.CloneImage(frame)
 	resImg = cv.CloneImage(frame)
 	grayImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
@@ -61,7 +62,8 @@ def getIris(frame):
 	cv.CvtColor(frame,grayImg,cv.CV_BGR2GRAY)
 	cv.Canny(grayImg, grayImg, 5, 70, 3)
 	cv.Smooth(grayImg,grayImg,cv.CV_GAUSSIAN, 7, 7)
-	circles = getCircles(grayImg)	
+	circles = getCircles(grayImg)
+	iris.append(resImg)
 	for circle in circles:
 		rad = int(circle[0][2])
 		global radius
@@ -69,6 +71,15 @@ def getIris(frame):
 		cv.Circle(mask, centroid, rad, cv.CV_RGB(255,255,255), cv.CV_FILLED)
 		cv.Not(mask,mask)
 		cv.Sub(frame,copyImg,resImg,mask)
+		x = int(centroid[0] - rad)
+		y = int(centroid[1] - rad)
+		w = int(rad * 2)
+		h = w
+		cv.SetImageROI(resImg, (x,y,w,h))
+		cropImg = cv.CreateImage((w,h), 8, 3)
+		cv.Copy(resImg,cropImg)
+		cv.ResetImageROI(resImg)
+		return(cropImg)
 	return (resImg)
 	
 def getPolar2CartImg(image, center, rad):
@@ -81,7 +92,7 @@ cv.NamedWindow("input", cv.CV_WINDOW_AUTOSIZE)
 cv.NamedWindow("output", cv.CV_WINDOW_AUTOSIZE)
 cv.NamedWindow("normalized", cv.CV_WINDOW_AUTOSIZE)
 
-eyesList = os.listdir('images/R')
+eyesList = os.listdir('images/eyes')
 key = 0
 while True:
 	eye = getNewEye(eyesList)
