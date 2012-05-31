@@ -85,7 +85,7 @@ eyesList = os.listdir('images/R')
 key = 0
 while True:
 	eye = getNewEye(eyesList)
-	frame = cv.LoadImage("images/R/"+eye)
+	frame = cv.LoadImage("images/eyes/"+eye)
 	iris = cv.CloneImage(frame)
 	output = getPupil(frame)
 	iris = getIris(output)
