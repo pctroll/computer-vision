@@ -88,10 +88,24 @@ def onSliderChange(n):
 # @returns image	binary image
 def getBinaryImage(frame, hsvMin, hsvMax):
 	resImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	tmpImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
 	hsvImg = cv.CreateImage(cv.GetSize(frame), 8, 3)
 	cv.CvtColor(frame, hsvImg, cv.CV_BGR2HSV)
-	cv.InRangeS(frame, hsvMin, hsvMax, resImg)
+	cv.InRangeS(frame, hsvMin, hsvMax, tmpImg)
 	del hsvImg
+	contours = 
+	return (resImg)
+
+def getBinaryClean(frame):
+	resImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	copy = cv.CloneImage(frame)
+	contours = cv.FindContours(copy, cv.CreateMemStorage(0), mode = cv.CV_RETR_EXTERNAL)
+	while contours:
+		moments = cv.Moments(contours)
+		area = cv.GetCentralMoment(moments,0,0)
+		if (area > 20):
+			cv.DrawContours(resImg,contours,(255,255,255), (255,255,255), 2, cv.CV_FILLED)
+		contours = contours.h_next()
 	return (resImg)
 
 # Returns a list of properties (area, width, height) from the input binary image
@@ -102,17 +116,18 @@ def getBinaryImage(frame, hsvMin, hsvMax):
 # @param image		binary image
 # @return list		properties
 def getLeafProps(frame):
-	area = 0
-	centroid = (0,0)
-	width = 0
-	height = 0
+	area = -1
+	centroid = (-1,-1)
+	width = -1
+	height = -1
 	contours = cv.FindContours(frame, cv.CreateMemStorage(0), mode = cv.CV_RETR_EXTERNAL)
 	while contours:
 		moments = cv.Moments(contours)
 		area = cv.GetCentralMoment(moments,0,0)
 		if (area > 50):
-			centroid[0] = int(cv.GetSpatialMoment(moments,1,0)/area)
-			centroid[1] = int(cv.GetSpatialMoment(moments,0,1)/area)
+			x = int(cv.GetSpatialMoment(moments,1,0)/area)
+			y = int(cv.GetSpatialMoment(moments,0,1)/area)
+			centroid = (x,y)
 		contours = contours.h_next()
 	properties = []
 	properties.append(area)
@@ -135,6 +150,7 @@ def getLeafNumCorners(frame):
 # Window creation for showing input, output, sliders, etc
 cv.NamedWindow("input", cv.CV_WINDOW_AUTOSIZE)
 cv.NamedWindow("output", cv.CV_WINDOW_AUTOSIZE)
+cv.NamedWindow("clean", cv.CV_WINDOW_AUTOSIZE)
 cv.NamedWindow("HSV module", cv.CV_WINDOW_AUTOSIZE)
 cv.MoveWindow("input", 0, 0)
 cv.MoveWindow("output", 0, 0)
@@ -147,16 +163,21 @@ cv.CreateTrackbar("V_high", "HSV module", V_high, 255, onSliderChange)
 # leaves list initialization with images from directory
 leavesList = os.listdir('images/leaves')
 leaf = getNewLeaf(leavesList)
+isUpdate = True
 while True:
 	frame = cv.LoadImage("images/leaves/"+leaf)
 	size = cv.GetSize(frame)
 	cv.MoveWindow("output", size[0]+3, 0)
 	cv.ShowImage("input", frame)
 	output = getBinaryImage(frame, (H_low,S_low,V_low), (H_high,S_high,V_high))
+	clean = getBinaryClean(output)
 	cv.ShowImage("output", output)
+	#cv.ShowImage("clean", clean)
 	props = getLeafProps(output)
 	key = cv.WaitKey(30)
-	# seems like Esc with NumLck equals 1048603
+	print "Properties"
+	print "\tarea: %f" % props[0]
+	print  "\tcentroid (%d, %d)" % (props[1][0], props[1][1])
 	if (key == 27 or key == 1048603):
 		break
 	elif (key == 32):

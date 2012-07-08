@@ -62,8 +62,7 @@ def getIris(frame):
 		cv.Sub(frame,copyImg,resImg,mask)
 		x = int(centroid[0] - rad)
 		y = int(centroid[1] - rad)
-		w = int(rad * 2)
-		h = w
+		w = int(rad * 2
 		cv.SetImageROI(resImg, (x,y,w,h))
 		cropImg = cv.CreateImage((w,h), 8, 3)
 		cv.Copy(resImg,cropImg)
