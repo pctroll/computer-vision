@@ -12,9 +12,11 @@
 # colocarlas como entrada en el programa principal y comparar
 # resultados con la entrada provista.
 
+import cv2
 import cv
 import os
 import math
+import numpy as np
 
 WIDTH = 0
 HEIGHT = 1
@@ -38,7 +40,18 @@ V_low = 0
 H_high = 0
 S_high = 0
 V_high = 0
-imgSlider = cv.CreateImage((300,200), 8, 3)
+
+R_low = 0
+G_low = 100
+B_low = 0
+R_high = 104
+G_high = 255
+B_high = 76
+corner = 1
+
+
+imgSliderHSV = cv.CreateImage((300,200), 8, 3)
+imgSliderRGB = cv.CreateImage((300,200), 8, 3)
 #####################################
 
 
@@ -65,14 +78,14 @@ def getNewLeaf(list):
 #
 # @param int		Some number
 # @return void
-def onSliderChange(n):
+def onSliderChangeHSV(n):
 	global H_low
 	global S_low
 	global V_low
 	global H_high
 	global S_high
 	global V_high
-	global imgSlider
+	global imgSliderHSV
 	H_low = cv.GetTrackbarPos("H_low", "HSV module")
 	S_low = cv.GetTrackbarPos("S_low", "HSV module")
 	V_low = cv.GetTrackbarPos("V_low", "HSV module")
@@ -81,9 +94,38 @@ def onSliderChange(n):
 	V_high = cv.GetTrackbarPos("V_high", "HSV module")
 	bgrColorLow = hsvToRgb((H_low, S_low, V_low))
 	bgrColorHigh = hsvToRgb((H_high, S_high, V_high))
-	cv.Rectangle(imgSlider, (0,0), (150,200), bgrColorLow, cv.CV_FILLED)
-	cv.Rectangle(imgSlider, (151,0), (300, 200), bgrColorHigh, cv.CV_FILLED)
-	cv.ShowImage("HSV module", imgSlider)
+	cv.Rectangle(imgSliderHSV, (0,0), (150,200), bgrColorLow, cv.CV_FILLED)
+	cv.Rectangle(imgSliderHSV, (151,0), (300, 200), bgrColorHigh, cv.CV_FILLED)
+	cv.ShowImage("HSV module", imgSliderHSV)
+
+##
+# Sets the min and max RGB values
+#
+# Ajusta los valores minimos y maximos de RGB
+#
+# @param int		Some number
+# @return void
+def onSliderChangeRGB(n):
+	global R_low
+	global G_low
+	global B_low
+	global R_high
+	global G_high
+	global B_high
+	global imgSliderRGB
+	global corner
+	R_low = cv.GetTrackbarPos("R_low", "RGB module")
+	G_low = cv.GetTrackbarPos("G_low", "RGB module")
+	B_low = cv.GetTrackbarPos("B_low", "RGB module")
+	R_high = cv.GetTrackbarPos("R_high", "RGB module")
+	G_high = cv.GetTrackbarPos("G_high", "RGB module")
+	B_high = cv.GetTrackbarPos("B_high", "RGB module")
+	corner = cv.GetTrackbarPos("corner", "RGB module")
+	bgrColorLow = (B_low, G_low, R_low)
+	bgrColorHigh = (B_high, G_high, R_high)
+	cv.Rectangle(imgSliderRGB, (0,0), (150,200), bgrColorLow, cv.CV_FILLED)
+	cv.Rectangle(imgSliderRGB, (151,0), (300, 200), bgrColorHigh, cv.CV_FILLED)
+	cv.ShowImage("RGB module", imgSliderRGB)
 	
 ##
 # Returns binary image according to the specified HSV range
@@ -95,7 +137,7 @@ def onSliderChange(n):
 # @param tuple		HSV min value
 # @param tuple		HSV max value
 # @returns image	binary image
-def getBinaryImage(frame, hsvMin, hsvMax):
+def getBinaryImageHSV(frame, hsvMin, hsvMax):
 	resImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
 	hsvImg = cv.CreateImage(cv.GetSize(frame), 8, 3)
 	cv.CvtColor(frame, hsvImg, cv.CV_BGR2HSV)
@@ -103,6 +145,31 @@ def getBinaryImage(frame, hsvMin, hsvMax):
 	del hsvImg
 	return (resImg)
 
+
+##
+# Returns binary image according to the specified RGB range
+#
+# Regresa imagein binaria segun lo especificado por el rango
+# RGB de entrada
+#
+# @param image		input image
+# @param tuple		RGB min value
+# @param tuple		RGB max value
+# @returns image	binary image
+def getBinaryImageRGB(frame, rgbMin, rgbMax):
+	resImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	cv.InRangeS(frame, rgbMin, rgbMax, resImg)
+	cv.Not(resImg, resImg)
+	return (resImg)
+
+
+##
+# DEPRECATED
+# Tried to be an optimized version of the getBinary function
+# by drawing only contours bigger than a given size
+#
+# Intento de optimizacion de la funcion getBinary
+# pintando solo los contornos mas grandes que un tamano dado
 def getBinaryClean(frame):
 	resImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
 	copy = cv.CloneImage(frame)
@@ -115,34 +182,7 @@ def getBinaryClean(frame):
 		contours = contours.h_next()
 	return (resImg)
 
-##
-# Returns a list of properties (area, width, height) from the input binary image
-#
-# Regresa una lista de caracteristicas (area, ancho, alto) a partir de la imagen binaria
-# de entrada
-#
-# @param image		binary image
-# @return list		properties
-def getLeafProps(frame):
-	area = -1
-	centroid = (-1,-1)
-	width = -1
-	height = -1
-	contours = cv.FindContours(frame, cv.CreateMemStorage(0), mode = cv.CV_RETR_EXTERNAL)
-	while contours:
-		moments = cv.Moments(contours)
-		area = cv.GetCentralMoment(moments,0,0)
-		if (area > 50):
-			x = int(cv.GetSpatialMoment(moments,1,0)/area)
-			y = int(cv.GetSpatialMoment(moments,0,1)/area)
-			centroid = (x,y)
-		contours = contours.h_next()
-	properties = []
-	properties.append(area)
-	properties.append(centroid)
-	# TODO: Finish the method in order to find the 
-	#	width and height.
-	return (properties)
+
 
 ##
 # Transform HSV values to RGB values
@@ -179,7 +219,7 @@ def hsvToRgb(hsvColor):
 	else:
 		r,g,b = v,p,q
 	
-	return (r*255, g*255, b*255)
+	return (b*255, g*255, r*255)
 
 ##
 # Returns the normalized RGB image based on the implementation
@@ -201,12 +241,22 @@ def normalizeImage(frame):
 	blueAvg = cv.CreateImage(cv.GetSize(frame), 8, 1)
 	resImg = cv.CreateImage(cv.GetSize(frame), 8, 3)
 	cv.Split(frame, blueChannel, greenChannel, redChannel, None)
+
+	hsvImg = cv.CreateImage(cv.GetSize(frame), 8, 3)
+	cv.CvtColor(frame, hsvImg, cv.CV_BGR2HSV)
+	hueChannel = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	satChannel = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	valChannel = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	cv.Split(hsvImg, hueChannel, satChannel, valChannel, None)
+
 	for y in range (0, frame.height):
 		for x in range (0, frame.width):
 			redValue = cv.GetReal2D(redChannel, y, x)
 			greenValue = cv.GetReal2D(greenChannel, y, x)
 			blueValue = cv.GetReal2D(blueChannel, y, x)
 			sum = redValue + greenValue + blueValue + 0.0
+			if (sum < 1.0):
+				sum = 1.0
 			cv.SetReal2D(redAvg, y, x, redValue/sum*255)
 			cv.SetReal2D(greenAvg, y, x, greenValue/sum*255)
 			cv.SetReal2D(blueAvg, y, x, blueValue/sum*255)
@@ -219,6 +269,13 @@ def normalizeImage(frame):
 	del blueAvg
 	return (resImg)
 
+##
+# Increase the saturation of the image
+#
+# Aumenta la saturacion de la imagen
+#
+# @param IplImage	imagen RGB
+# @return IplImage	imagen RGB
 def saturate(frame):
 	cv.CvtColor(frame, frame, cv.CV_BGR2HSV)
 	hue = cv.CreateImage(cv.GetSize(frame), 8, 1)
@@ -238,56 +295,158 @@ def saturate(frame):
 	cv.CvtColor(frame, frame, cv.CV_HSV2BGR)
 	return (frame)
 
-#	
-# Returns the number of corners on the image
+
+##
+# Computes the corner map in the binary image
 #
-# Regresa el numero de esquinas en la imagen
+# Computa el mapa de esquinas en la imagen binaria de entrada
 #
-# @param image		binary image
-# @returns int		number of corners 
-def getLeafNumCorners(frame):
-	corners = 0
-	# TODO: Find the 
-	return (corners)
+# @param IplImage	binary image
+# @return Mat		corner map
+def getCornerMap(frame):
+	global corner
+	cornerMap = cv.CreateMat(frame.height, frame.width, cv.CV_32FC1)
+	if (corner < 1):
+		corner = 1
+		cv.SetTrackbarPos("corner", "RGB module", 1)
+	cv.CornerHarris(frame, cornerMap, corner)
+	return (cornerMap)
+
+##
+# Draws the corner map on the specified image and returns it
+#
+# Pinta el mapa de esquinas en la imagen especificada y la regresa
+#
+# @param Mat		corner map
+# @return IplImage	image with corner map drawn
+def drawCornerMap(cornerMap, frame):
+	for y in range(frame.height):
+		for x in range(frame.width):
+			harris = cv.Get2D(cornerMap, y, x)
+			if (harris[0] > 10e-06):
+				cv.Circle(frame, (x,y), 2, cv.RGB(255, 0,0))
+
+##
+# Isolate a sector of an image using a given WHITE mask
+#
+# Aisla un sector de la imagen dada una mascara BLANCA
+#
+# @param IplImage	image RGB
+# @param IplImage	image single channel
+# @return IplImage	image RGB isolated
+def getMaskedImage(frame, mask):
+	#cv.Not(myMask, myMask)
+	rgbImg = cv.CreateImage(cv.GetSize(frame), 8, 3)
+	resImg = cv.CreateImage(cv.GetSize(frame), 8, 1)
+	cv.Sub(frame, frame, rgbImg, mask)
+	cv.CvtColor(rgbImg, resImg, cv.CV_BGR2GRAY)
+	return (resImg)
+
+##
+# Returns a map of descriptors and keypoints based on the SURF technique
+#
+# Regresa un mapa de descriptores y puntos clave basado en la tecnica SURF
+# @param IplImage	image gray
+# @return tuple		keypoints, descriptors
+def getFeatures(frame):
+	surfer = cv2.SURF()
+	# this line gives and error and could not be fixed
+	# in order to go further
+	# esta linea da un error y no pudo ser solucionado
+	# a fin de continuar la investigacion
+	#kp, descriptors = surfer.detect(frame, None, False)
+	return (kp, descriptors)
+
+
+##
+# Saves the current masked image into the /images/isolated directory
+# in order to get the example images for the SURF detector
+#
+# Guarda la actual imagen enmascarada en el directorio /images/isolated
+# a fin de tener las imagenes de ejemplo para el detector SURF
+def saveMaskedImage(name, frame):
+	cv.SaveImage("images/isolated/"+name, frame)
+	
+
 
 # Window creation for showing input, output, sliders, etc
 cv.NamedWindow("input", cv.CV_WINDOW_AUTOSIZE)
-cv.NamedWindow("output", cv.CV_WINDOW_AUTOSIZE)
-cv.NamedWindow("clean", cv.CV_WINDOW_AUTOSIZE)
+cv.NamedWindow("binary", cv.CV_WINDOW_AUTOSIZE)
+cv.NamedWindow("normalized", cv.CV_WINDOW_AUTOSIZE)
+cv.NamedWindow("masked", cv.CV_WINDOW_AUTOSIZE)
 cv.NamedWindow("HSV module", cv.CV_WINDOW_AUTOSIZE)
+cv.NamedWindow("RGB module", cv.CV_WINDOW_AUTOSIZE)
 cv.MoveWindow("input", 0, 0)
-cv.MoveWindow("output", 0, 0)
-cv.CreateTrackbar("H_low", "HSV module", H_low, 179, onSliderChange)
-cv.CreateTrackbar("S_low", "HSV module", S_low, 255, onSliderChange)
-cv.CreateTrackbar("V_low", "HSV module", V_low, 255, onSliderChange)
-cv.CreateTrackbar("H_high", "HSV module", H_high, 179, onSliderChange)
-cv.CreateTrackbar("S_high", "HSV module", S_high, 255, onSliderChange)
-cv.CreateTrackbar("V_high", "HSV module", V_high, 255, onSliderChange)
-cv.ShowImage("HSV module", imgSlider)
+cv.MoveWindow("binary", 0, 0)
+
+cv.CreateTrackbar("H_low", "HSV module", H_low, 179, onSliderChangeHSV)
+cv.CreateTrackbar("S_low", "HSV module", S_low, 255, onSliderChangeHSV)
+cv.CreateTrackbar("V_low", "HSV module", V_low, 255, onSliderChangeHSV)
+cv.CreateTrackbar("H_high", "HSV module", H_high, 179, onSliderChangeHSV)
+cv.CreateTrackbar("S_high", "HSV module", S_high, 255, onSliderChangeHSV)
+cv.CreateTrackbar("V_high", "HSV module", V_high, 255, onSliderChangeHSV)
+
+cv.CreateTrackbar("R_low", "RGB module", R_low, 255, onSliderChangeRGB)
+cv.CreateTrackbar("G_low", "RGB module", G_low, 255, onSliderChangeRGB)
+cv.CreateTrackbar("B_low", "RGB module", B_low, 255, onSliderChangeRGB)
+cv.CreateTrackbar("R_high", "RGB module", R_high, 255, onSliderChangeRGB)
+cv.CreateTrackbar("G_high", "RGB module", G_high, 255, onSliderChangeRGB)
+cv.CreateTrackbar("B_high", "RGB module", B_high, 255, onSliderChangeRGB)
+cv.CreateTrackbar("corner", "RGB module", corner, 255, onSliderChangeRGB)
+
+
+cv.ShowImage("HSV module", imgSliderHSV)
+cv.ShowImage("RGB module", imgSliderRGB)
 # leaves list initialization with images from directory
 leavesList = os.listdir('images/leaves')
 leaf = getNewLeaf(leavesList)
 isUpdate = True
+
+
+isNormalized = False
+normalizedImg = None
+showNormalized = False
+maskedImg = None
+isPressedC = False
+#onSliderChangeHSV(0)
+onSliderChangeRGB(0)
 while True:
 	frame = cv.LoadImage("images/leaves/"+leaf)
 	size = cv.GetSize(frame)
 	cv.MoveWindow("output", size[0]+3, 0)
+	if (isNormalized is False):
+		# Deprecated because it's not suitable for the project
+		# Abandonada porque no sirve para el proyecto
+		# frame = saturate(frame)
+		normalizedImg = normalizeImage(frame)
+		isNormalized = True
+		binImg = getBinaryImageRGB(normalizedImg, (B_low,G_low,R_low), (B_high,G_high,R_high))
+	
+	# Deprecated because it's not suitable for the project
+	# Abandonadas porque no sirven para el proyecto
+	# cornerMap = getCornerMap(binImg)
+	# drawCornerMap(cornerMap, frame)
+
+	maskedImg = getMaskedImage(frame, binImg)
+	# gives error
+	# keyPoints, descriptors = getFeatures(maskedImg)
+
 	cv.ShowImage("input", frame)
-	#clean = getBinaryClean(output)
-	frame = saturate(frame)
-	normalized = normalizeImage(frame)
-	output = getBinaryImage(normalized, (H_low,S_low,V_low), (H_high,S_high,V_high))
-	cv.ShowImage("output", output)
-	#cv.ShowImage("clean", clean)
-	props = getLeafProps(output)
+	cv.ShowImage("normalized", normalizedImg)
+	cv.ShowImage("binary", binImg)
+	cv.ShowImage("masked", maskedImg)
+
 	key = cv.WaitKey(30)
-	#print "Properties"
-	#print "\tarea: %f" % props[0]
-	#print  "\tcentroid (%d, %d)" % (props[1][0], props[1][1])
-	if (key == 27 or key == 1048603):
+	if (key is 27 or key is 1048603):
 		break
-	elif (key == 32):
+	elif (key is 32):
 		leaf = getNewLeaf(leavesList)
+		isNormalized = False
+	elif (key is 67 or key is 99):
+		isPressedC = True
+	elif (key is 83 or key is 115):
+		saveMaskedImage(leaf, maskedImg)
+		
 
 cv.DestroyAllWindows()
 
